@@ -26,6 +26,32 @@ import { FloatingDecorations } from './components/FloatingDecorations';
 import { Countdown } from './components/Countdown';
 import { HistoryItem, ActionType } from './types';
 
+// Custom hook for robust local storage persistence
+function useLocalStorage<T>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
+  const [storedValue, setStoredValue] = useState<T>(() => {
+    if (typeof window === "undefined") return initialValue;
+    try {
+      const item = window.localStorage.getItem(key);
+      return item ? JSON.parse(item) : initialValue;
+    } catch (error) {
+      console.warn(`Error reading localStorage key "${key}":`, error);
+      return initialValue;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(key, JSON.stringify(storedValue));
+      }
+    } catch (error) {
+      console.warn(`Error setting localStorage key "${key}":`, error);
+    }
+  }, [key, storedValue]);
+
+  return [storedValue, setStoredValue];
+}
+
 interface ExamItem {
   id: string;
   subject: string;
@@ -109,22 +135,14 @@ const getWordCount = (count: number) => {
 };
 
 export default function App() {
-  // --- States ---
-  const [totalComp, setTotalComp] = useState<number>(() => {
-    const saved = localStorage.getItem('brother_tax_total');
-    return saved ? parseInt(saved, 10) : 0;
-  });
+  // --- Persistent States ---
+  const [totalComp, setTotalComp] = useLocalStorage<number>('brother_tax_total', 0);
+  const [history, setHistory] = useLocalStorage<HistoryItem[]>('brother_tax_history', []);
+  const [isSimulatedFinished, setIsSimulatedFinished] = useLocalStorage<boolean>('brother_tax_sim_finished', false);
+  const [heelWearCount, setHeelWearCount] = useLocalStorage<number>('brother_tax_heel_wear_count', 0);
 
-  const [history, setHistory] = useState<HistoryItem[]>(() => {
-    const saved = localStorage.getItem('brother_tax_history');
-    return saved ? JSON.parse(saved) : [];
-  });
-
+  // --- Volatile States ---
   const [isExamFinished, setIsExamFinished] = useState<boolean>(false);
-  const [isSimulatedFinished, setIsSimulatedFinished] = useState<boolean>(() => {
-    const saved = localStorage.getItem('brother_tax_sim_finished');
-    return saved === 'true';
-  });
 
   const [srushtiQuote, setSrushtiQuote] = useState<string>(
     "Every time Jaideep annoys me, his wallet suffers. 😌✨"
@@ -148,15 +166,6 @@ export default function App() {
   const [showHeelsPopup, setShowHeelsPopup] = useState<boolean>(false);
   const [heelMessage, setHeelMessage] = useState<string>("");
   const [showEasterEggPopup, setShowEasterEggPopup] = useState<boolean>(false);
-  
-  const [heelWearCount, setHeelWearCount] = useState<number>(() => {
-    const saved = localStorage.getItem('brother_tax_heel_wear_count');
-    return saved ? parseInt(saved, 10) : 0;
-  });
-
-  useEffect(() => {
-    localStorage.setItem('brother_tax_heel_wear_count', heelWearCount.toString());
-  }, [heelWearCount]);
 
   const heelComp = history
     .filter(item => item.type === 'heels_fine')
@@ -174,19 +183,6 @@ export default function App() {
 
   // --- Target Date (11 July 2026) ---
   const EXAMS_END_DATE = new Date('2026-07-11T12:30:00+05:30');
-
-  // Sync to LocalStorage
-  useEffect(() => {
-    localStorage.setItem('brother_tax_total', totalComp.toString());
-  }, [totalComp]);
-
-  useEffect(() => {
-    localStorage.setItem('brother_tax_history', JSON.stringify(history));
-  }, [history]);
-
-  useEffect(() => {
-    localStorage.setItem('brother_tax_sim_finished', isSimulatedFinished ? 'true' : 'false');
-  }, [isSimulatedFinished]);
 
   // Handle auto-confetti loop when exam ends
   useEffect(() => {
