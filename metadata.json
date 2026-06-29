@@ -1,0 +1,6 @@
+{
+  "name": "Brother Tax Tracker",
+  "description": "Srushti's Mood Compensation Tracker - a cute and playful sibling compensation tracker.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
